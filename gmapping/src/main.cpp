@@ -32,16 +32,65 @@
 #include <ros/ros.h>
 
 #include "slam_gmapping.h"
+#include "std_msgs/String.h"
+bool shouldReset = false;
 
-int
-main(int argc, char** argv)
-{
-  ros::init(argc, argv, "slam_gmapping");
 
-  SlamGMapping gn;
-  gn.startLiveSlam();
-  ros::spin();
+void sysCmdCallback(const std_msgs::String& sys_cmd)
+  {
+    ROS_INFO("GOT A SYS COMMAND!!!");
+//    ROS_INFO("I heard: [%s]", sys_cmd->data.c_str());
+//    printf("%s", sys_cmd.c_str());
+    if (sys_cmd.data == "reset")
+    {
+      ROS_WARN("RESETTING!!!!!!");
+      shouldReset = true;
+    }
+    else{
+        ROS_WARN("NOT RESETTING");
+    }
+  }
 
-  return(0);
-}
 
+  void main_loop() {
+
+    ROS_INFO("HERE");
+
+    ros::NodeHandle n;
+    ros::Subscriber sub = n.subscribe("/syscommand", 10, sysCmdCallback);
+
+    while (ros::ok()) {
+//      ros::Duration(3).sleep();
+      ROS_INFO("Back at top of mapping loop!!!");
+//      std::cout << ("Back at top of mapping loop");
+        {
+//            ros::Duration(3).sleep();
+            SlamGMapping gn;
+            gn.startLiveSlam();
+
+            while (!shouldReset) {
+                ros::spinOnce();
+                ros::Duration(0.2).sleep();
+            }
+            ROS_INFO("Resetting map...");
+            shouldReset = false;
+            ROS_INFO("After should reset");
+        }
+//        ROS_INFO("Out of scope");
+//      ros::Duration(3).sleep();
+    }
+    ROS_INFO("ROS is no longer okay :(");
+  }
+
+  int
+  main(int argc, char** argv)
+  {
+    ros::init(argc, argv, "slam_gmapping");
+
+    // ros::NodeHandle n;
+    // ros::Subscriber sub = n.subscribe<std_msgs::String>("/syscommand", 10, sysCmdCallback);
+    main_loop();
+//    ros::spin();
+
+    return(0);
+  }
